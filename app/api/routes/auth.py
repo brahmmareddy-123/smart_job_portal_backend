@@ -65,9 +65,11 @@ def login(
     )
 
     return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    "access_token": access_token,
+    "token_type": "bearer",
+    "is_admin": user.is_admin,
+    "username": user.username
+}
 
 
 # CURRENT USER

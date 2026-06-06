@@ -1,6 +1,8 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+from fastapi import HTTPException
+
 import os
 
 from app.db.dependency import get_db
@@ -34,3 +36,12 @@ def get_current_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     return user
+def admin_required(current_user):
+
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
+    return current_user

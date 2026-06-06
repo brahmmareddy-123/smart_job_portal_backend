@@ -65,20 +65,27 @@ def get_all_applications(
     current_user: User = Depends(get_current_user)
 ):
 
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
     applications = db.query(Application).all()
 
     result = []
 
     for app in applications:
-            result.append({
-                   "application_id": app.id,
-                   "applicant": app.user.username,
-                   "email": app.user.email,
-                   "job_title": app.job.title,
-                   "company": app.job.company,
-                   "resume": app.resume,
-                   "status": app.status
-            })
+        result.append({
+            "application_id": app.id,
+            "applicant": app.user.username,
+            "email": app.user.email,
+            "job_title": app.job.title,
+            "company": app.job.company,
+            "resume": app.resume,
+            "status": app.status
+        })
+
     return result
 @router.get("/my-applications")
 def my_applications(
@@ -123,8 +130,15 @@ def download_resume(
 def update_application_status(
     application_id: int,
     status: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
 
     application = db.query(Application).filter(
         Application.id == application_id

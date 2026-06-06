@@ -19,6 +19,12 @@ def create_job(
     current_user: User = Depends(get_current_user)
 ):
 
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
     new_job = Job(
         title=job.title,
         company=job.company,
@@ -50,6 +56,12 @@ def delete_job(
     current_user: User = Depends(get_current_user)
 ):
 
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+
     job = db.query(Job).filter(Job.id == job_id).first()
 
     if not job:
@@ -64,6 +76,7 @@ def delete_job(
     return {
         "message": "Job deleted successfully"
     }
+    
 @router.put("/{job_id}")
 def update_job(
     job_id: int,
@@ -71,6 +84,12 @@ def update_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
 
     job = db.query(Job).filter(Job.id == job_id).first()
 
@@ -101,8 +120,44 @@ def get_stats(
 
     total_users = db.query(User).count()
 
+    accepted = db.query(Application).filter(
+        Application.status == "Accepted"
+    ).count()
+
+    rejected = db.query(Application).filter(
+        Application.status == "Rejected"
+    ).count()
+
+    pending = db.query(Application).filter(
+        Application.status == "Pending"
+    ).count()
+
     return {
         "total_jobs": total_jobs,
         "total_applications": total_applications,
-        "total_users": total_users
+        "total_users": total_users,
+        "accepted": accepted,
+        "rejected": rejected,
+        "pending": pending
     }
+@router.get("/job-analytics")
+def job_analytics(
+    db: Session = Depends(get_db)
+):
+
+    jobs = db.query(Job).all()
+
+    result = []
+
+    for job in jobs:
+
+        application_count = db.query(Application).filter(
+            Application.job_id == job.id
+        ).count()
+
+        result.append({
+            "job": job.title,
+            "applications": application_count
+        })
+
+    return result
