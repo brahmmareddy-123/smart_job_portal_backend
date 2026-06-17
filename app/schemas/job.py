@@ -5,3 +5,4 @@ class JobCreate(BaseModel):
     company: str
     location: str
     description: str
+    category: str

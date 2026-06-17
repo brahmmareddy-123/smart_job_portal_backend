@@ -9,6 +9,9 @@ from app.models.application import Application
 from app.models.job import Job
 from app.models.user import User
 from app.core.deps import get_current_user
+from app.services.resume_analyzer import analyze_resume
+from app.services.email_service import send_email
+
 
 router = APIRouter()
 
@@ -44,21 +47,33 @@ def apply_job(
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(resume.file, buffer)
+    # Analyze resume
+    analysis = analyze_resume(file_path)
+
+    print("ATS SCORE:", analysis["score"])
+    print("SKILLS:", analysis["skills_found"])
 
     # Save in DB
     new_application = Application(
-        user_id=current_user.id,
-        job_id=job_id,
-        resume=resume.filename
-    )
-
+    user_id=current_user.id,
+    job_id=job_id,
+    resume=resume.filename,
+    ats_score=analysis["score"],
+    skills_found=",".join(analysis["skills_found"]),
+    missing_skills=",".join(analysis["missing_skills"]),
+    suggestions=" | ".join(analysis["suggestions"])
+)
     db.add(new_application)
     db.commit()
 
     return {
-        "message": "Applied successfully",
-        "resume_saved_as": resume.filename
-    }
+    "message": "Applied successfully",
+    "resume_saved_as": resume.filename,
+    "ats_score": analysis["score"],
+    "skills_found": analysis["skills_found"],
+    "missing_skills": analysis["missing_skills"],
+    "suggestions": analysis["suggestions"]
+}
 @router.get("/all")
 def get_all_applications(
     db: Session = Depends(get_db),
@@ -71,21 +86,29 @@ def get_all_applications(
             detail="Admin access required"
         )
 
-    applications = db.query(Application).all()
+    applications = (
+        db.query(Application)
+        .order_by(Application.ats_score.desc())
+        .all()
+    )
 
     result = []
 
     for app in applications:
         result.append({
-            "application_id": app.id,
-            "applicant": app.user.username,
-            "email": app.user.email,
-            "job_title": app.job.title,
-            "company": app.job.company,
-            "resume": app.resume,
-            "status": app.status
-        })
-
+    "application_id": app.id,
+    "applicant": app.user.username,
+    "email": app.user.email,
+    "job_title": app.job.title,
+    "company": app.job.company,
+    "resume": app.resume,
+    "status": app.status,
+    "ats_score": app.ats_score,
+    "skills_found": app.skills_found,
+    "recommended": app.ats_score >= 70,
+    "missing_skills": app.missing_skills,
+    "suggestions": app.suggestions
+})
     return result
 @router.get("/my-applications")
 def my_applications(
@@ -112,8 +135,7 @@ def my_applications(
     return result
 @router.get("/download-resume/{filename}")
 def download_resume(
-    filename: str,
-    current_user: User = Depends(get_current_user)
+    filename: str
 ):
 
     file_path = f"uploads/{filename}"
@@ -153,6 +175,21 @@ def update_application_status(
     application.status = status
 
     db.commit()
+    db.refresh(application)
+
+    send_email(
+        application.user.email,
+        f"Application {status}",
+        f"""
+Hello {application.user.username},
+
+Your application for {application.job.title}
+at {application.job.company}
+has been {status}.
+
+Thank you for using Smart Job Portal.
+        """
+    )
 
     return {
         "message": f"Application {status}"

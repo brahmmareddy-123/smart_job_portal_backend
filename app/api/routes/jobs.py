@@ -7,6 +7,9 @@ from app.models.user import User
 from app.schemas.job import JobCreate
 from app.core.deps import get_current_user
 from app.models.application import Application
+from fastapi import UploadFile, File, Form
+import shutil
+import os
 
 
 router = APIRouter()
@@ -14,7 +17,12 @@ router = APIRouter()
 
 @router.post("/create")
 def create_job(
-    job: JobCreate,
+    title: str = Form(...),
+    company: str = Form(...),
+    location: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+    logo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -24,12 +32,21 @@ def create_job(
             status_code=403,
             detail="Admin access required"
         )
+    print("LOGO RECEIVED:", logo.filename)
+    logo_filename = logo.filename
+
+    logo_path = f"uploads/{logo_filename}"
+
+    with open(logo_path, "wb") as buffer:
+        shutil.copyfileobj(logo.file, buffer)
 
     new_job = Job(
-        title=job.title,
-        company=job.company,
-        location=job.location,
-        description=job.description
+        title=title,
+        company=company,
+        location=location,
+        description=description,
+        category=category,
+        logo=logo_filename
     )
 
     db.add(new_job)
@@ -80,7 +97,15 @@ def delete_job(
 @router.put("/{job_id}")
 def update_job(
     job_id: int,
-    updated_job: JobCreate,
+
+    title: str = Form(...),
+    company: str = Form(...),
+    location: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+
+    logo: UploadFile = File(None),
+
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -99,10 +124,22 @@ def update_job(
             detail="Job not found"
         )
 
-    job.title = updated_job.title
-    job.company = updated_job.company
-    job.location = updated_job.location
-    job.description = updated_job.description
+    job.title = title
+    job.company = company
+    job.location = location
+    job.description = description
+    job.category = category
+
+    if logo:
+
+        logo_filename = logo.filename
+
+        logo_path = f"uploads/{logo_filename}"
+
+        with open(logo_path, "wb") as buffer:
+            shutil.copyfileobj(logo.file, buffer)
+
+        job.logo = logo_filename
 
     db.commit()
 
@@ -140,6 +177,8 @@ def get_stats(
         "rejected": rejected,
         "pending": pending
     }
+
+
 @router.get("/job-analytics")
 def job_analytics(
     db: Session = Depends(get_db)

@@ -18,3 +18,7 @@ class Application(Base):
 
     user = relationship("User")
     job = relationship("Job")
+    ats_score = Column(Integer, default=0)
+    skills_found = Column(String, default="")
+    missing_skills = Column(String(500))
+    suggestions = Column(String(1000))

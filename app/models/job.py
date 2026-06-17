@@ -6,7 +6,9 @@ class Job(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    title = Column(String(255))
-    company = Column(String(255))
-    location = Column(String(255))
-    description = Column(Text)
+    title = Column(String)
+    company = Column(String)
+    location = Column(String)
+    description = Column(String)
+    logo = Column(String)
+    category = Column(String(100))
