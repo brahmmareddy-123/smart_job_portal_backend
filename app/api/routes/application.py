@@ -125,12 +125,20 @@ def my_applications(
     for app in applications:
 
         result.append({
-            "application_id": app.id,
-            "job_title": app.job.title,
-            "company": app.job.company,
-            "resume": app.resume,
-            "status": app.status
-        })
+    "application_id": app.id,
+    "job_title": app.job.title,
+    "company": app.job.company,
+    "resume": app.resume,
+    "status": app.status,
+
+    "ats_score": app.ats_score,
+
+    "skills_found": app.skills_found,
+
+    "missing_skills": app.missing_skills,
+
+    "suggestions": app.suggestions
+})
 
     return result
 @router.get("/download-resume/{filename}")

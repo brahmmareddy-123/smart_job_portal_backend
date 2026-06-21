@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 class Interview(Base):
@@ -15,3 +16,5 @@ class Interview(Base):
     interview_time = Column(String(100))
     meeting_link = Column(String(255))
     status = Column(String(50), default="Scheduled")
+
+    application = relationship("Application")

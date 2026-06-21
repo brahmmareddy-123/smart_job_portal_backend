@@ -1,3 +1,5 @@
+from unittest import result
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -78,34 +80,84 @@ def my_interviews(
     current_user: User = Depends(get_current_user)
 ):
 
+    print("MY INTERVIEWS ROUTE HIT")
+    print("CURRENT USER ID:", current_user.id)
+    print("CURRENT USER EMAIL:", current_user.email)
     applications = db.query(Application).filter(
         Application.user_id == current_user.id
     ).all()
 
+    print("APPLICATIONS:", applications)
+
     app_ids = [app.id for app in applications]
+
+    print("APP IDS:", app_ids)
 
     interviews = db.query(Interview).filter(
         Interview.application_id.in_(app_ids)
     ).all()
 
+    print("INTERVIEWS:", interviews)
+
     result = []
 
     for interview in interviews:
 
+        application = db.query(Application).filter(
+            Application.id == interview.application_id
+        ).first()
+
+        print("APPLICATION FOUND:", application)
+
+        if application:
+            print("JOB TITLE:", application.job.title)
+            print("COMPANY:", application.job.company)
+
         result.append({
-    "id": interview.id,
-    "application_id": interview.application_id,
-    "interview_date": interview.interview_date,
-    "interview_time": interview.interview_time,
-    "meeting_link": interview.meeting_link,
-    "status": interview.status
-})
+            "id": interview.id,
+            "job_title": application.job.title if application else "",
+            "company": application.job.company if application else "",
+            "interview_date": interview.interview_date,
+            "interview_time": interview.interview_time,
+            "meeting_link": interview.meeting_link,
+            "status": interview.status
+        })
+
+    print("FINAL RESULT:", result)
+
     return result
 @router.get("/all")
 def get_all_interviews(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
 
     interviews = db.query(Interview).all()
 
-    return interviews
+    result = []
+
+    for interview in interviews:
+
+        application = db.query(Application).filter(
+            Application.id == interview.application_id
+        ).first()
+
+        result.append({
+            "id": interview.id,
+            "candidate": application.user.username,
+            "email": application.user.email,
+            "job_title": application.job.title,
+            "company": application.job.company,
+            "interview_date": interview.interview_date,
+            "interview_time": interview.interview_time,
+            "meeting_link": interview.meeting_link,
+            "status": interview.status
+        })
+
+    return result

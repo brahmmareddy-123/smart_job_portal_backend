@@ -148,31 +148,54 @@ def update_job(
     }
 @router.get("/stats")
 def get_stats(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
 
     total_jobs = db.query(Job).count()
 
-    total_applications = db.query(Application).count()
+    # ADMIN -> see everything
+    if current_user.is_admin:
 
-    total_users = db.query(User).count()
+        total_applications = db.query(Application).count()
 
-    accepted = db.query(Application).filter(
-        Application.status == "Accepted"
-    ).count()
+        accepted = db.query(Application).filter(
+            Application.status == "Accepted"
+        ).count()
 
-    rejected = db.query(Application).filter(
-        Application.status == "Rejected"
-    ).count()
+        rejected = db.query(Application).filter(
+            Application.status == "Rejected"
+        ).count()
 
-    pending = db.query(Application).filter(
-        Application.status == "Pending"
-    ).count()
+        pending = db.query(Application).filter(
+            Application.status == "Pending"
+        ).count()
+
+    # NORMAL USER -> see only own applications
+    else:
+
+        total_applications = db.query(Application).filter(
+            Application.user_id == current_user.id
+        ).count()
+
+        accepted = db.query(Application).filter(
+            Application.user_id == current_user.id,
+            Application.status == "Accepted"
+        ).count()
+
+        rejected = db.query(Application).filter(
+            Application.user_id == current_user.id,
+            Application.status == "Rejected"
+        ).count()
+
+        pending = db.query(Application).filter(
+            Application.user_id == current_user.id,
+            Application.status == "Pending"
+        ).count()
 
     return {
         "total_jobs": total_jobs,
         "total_applications": total_applications,
-        "total_users": total_users,
         "accepted": accepted,
         "rejected": rejected,
         "pending": pending
